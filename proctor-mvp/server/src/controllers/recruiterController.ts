@@ -4,8 +4,6 @@ import { Recruiter } from '../models';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || '';
-
 /**
  * POST /api/recruiter/register
  * Register a new recruiter account
@@ -30,6 +28,9 @@ const JWT_SECRET = process.env.JWT_SECRET || '';
  */
 export const register = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    // Read JWT secret from environment inside the function
+    const JWT_SECRET = process.env.JWT_SECRET || '';
+    
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
@@ -156,6 +157,9 @@ export const register = async (req: AuthRequest, res: Response): Promise<void> =
  */
 export const login = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    // Read JWT secret from environment inside the function
+    const JWT_SECRET = process.env.JWT_SECRET || '';
+    
     const { email, password } = req.body;
 
     if (!email || !password) {

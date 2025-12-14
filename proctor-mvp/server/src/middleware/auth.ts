@@ -7,9 +7,6 @@ export interface AuthRequest extends Request {
   sessionId?: string;
 }
 
-// JWT secret from environment
-const JWT_SECRET = process.env.JWT_SECRET || '';
-
 /**
  * Verify Recruiter Token (JWT only)
  * Expects JWT token in Authorization header: "Bearer <token>"
@@ -21,6 +18,9 @@ export const verifyRecruiterToken = (
   next: NextFunction
 ): void => {
   try {
+    // Read JWT secret from environment inside the function
+    const JWT_SECRET = process.env.JWT_SECRET || '';
+    
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

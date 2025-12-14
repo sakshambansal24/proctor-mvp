@@ -1,13 +1,13 @@
+// Load environment variables FIRST
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Express, Request, Response, NextFunction } from 'express';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
-import dotenv from 'dotenv';
 import { connectDatabase } from './config/database';
-
-// Load environment variables
-dotenv.config();
 
 // Connect to MongoDB
 connectDatabase();

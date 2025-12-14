@@ -1,12 +1,10 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/proctor-mvp';
 
 export const connectDatabase = async (): Promise<void> => {
   try {
+    // Read environment variable inside the function (after dotenv.config() has been called in index.ts)
+    const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/proctor-mvp';
+    
     const conn = await mongoose.connect(MONGODB_URI, {
       // These options are recommended for Mongoose 7.x
     });
