@@ -1,0 +1,123 @@
+<div class="report-container">
+  <div class="header">
+    <button class="btn-back" (click)="navigateBack()">← Back to Tests</button>
+    <h2>Test Report</h2>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading report...</div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error && report" class="report-content">
+    <!-- Test Summary -->
+    <div class="test-summary">
+      <h3>{{ report.test.title }}</h3>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="label">Total Questions:</span>
+          <span class="value">{{ report.test.questionCount }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Duration:</span>
+          <span class="value">{{ report.test.durationMinutes }} minutes</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Status:</span>
+          <span class="value">{{ report.test.published ? 'Published' : 'Draft' }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Test Link ID:</span>
+          <span class="value">{{ report.test.testLinkId }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overall Statistics -->
+    <div class="statistics">
+      <h3>Overall Statistics</h3>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">{{ report.summary.totalSessions }}</div>
+          <div class="stat-label">Total Sessions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ report.summary.completed }}</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ report.summary.inProgress }}</div>
+          <div class="stat-label">In Progress</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ report.summary.autoFailed }}</div>
+          <div class="stat-label">Auto Failed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ report.summary.totalRedFlags }}</div>
+          <div class="stat-label">Total Red Flags</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Candidate Sessions -->
+    <div class="sessions-section">
+      <h3>Candidate Sessions ({{ report.sessions.length }})</h3>
+      
+      <div *ngIf="report.sessions.length === 0" class="empty-state">
+        <p>No candidate sessions yet.</p>
+      </div>
+
+      <div *ngIf="report.sessions.length > 0" class="sessions-grid">
+        <div *ngFor="let session of report.sessions" class="session-card">
+          <div class="session-card-header">
+            <div class="session-identity">
+              <h4>{{ session.candidateName || 'Anonymous' }}</h4>
+              <span class="session-id">{{ session.sessionId }}</span>
+            </div>
+            <span class="status-badge" [ngClass]="getStatusClass(session.status)">
+              {{ session.status }}
+            </span>
+          </div>
+
+          <div class="session-card-body">
+            <div class="session-metrics">
+              <div class="metric">
+                <span class="metric-label">Score</span>
+                <span class="metric-value">
+                  <strong>{{ session.scorePercent !== undefined ? session.scorePercent : calculatePercentage(session.score, session.totalMarks) }}%</strong>
+                  <span class="metric-detail">({{ session.totalCorrect || session.score }}/{{ session.totalQuestions || session.totalMarks }})</span>
+                </span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Time Taken</span>
+                <span class="metric-value">{{ formatTime(session.timeTaken) }}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Red Flags</span>
+                <span class="metric-value" [class.high-flags]="session.redFlagCount >= 5">
+                  {{ session.redFlagCount }}
+                </span>
+              </div>
+            </div>
+
+            <div *ngIf="session.redFlagCount > 0 && session.redFlagCounts" class="red-flags-summary">
+              <span class="red-flags-label">Top flags:</span>
+              <div class="red-flags-tags">
+                <span *ngFor="let flag of getTopRedFlagTypes(session.redFlagCounts)" class="flag-tag">
+                  {{ formatRedFlagType(flag.type) }} ({{ flag.count }})
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="session-card-footer">
+            <button class="btn-view-details" (click)="viewSessionDetails(session.sessionId)">
+              View Details
+            </button>
+            <span class="session-time">{{ session.startedAt | date:'short' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

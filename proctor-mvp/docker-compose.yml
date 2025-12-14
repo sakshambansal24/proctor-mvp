@@ -1,0 +1,58 @@
+version: '3.7'
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:7.0
+    container_name: proctor-mvp-mongo
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_DATABASE: proctor-mvp
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - proctor-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: proctor-mvp-server
+    restart: unless-stopped
+    ports:
+      - "3003:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/proctor-mvp
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-in-production}
+      - CORS_ORIGIN=http://localhost:4200
+    volumes:
+      # Mount source code for development (hot-reload)
+      - ./server/src:/app/src:ro
+      - ./server/package.json:/app/package.json:ro
+      - ./server/tsconfig.json:/app/tsconfig.json:ro
+    depends_on:
+      - mongo
+    networks:
+      - proctor-network
+    # Override CMD for development with nodemon
+    command: sh -c "npm install && npm run dev"
+
+volumes:
+  mongo_data:
+    driver: local
+
+networks:
+  proctor-network:
+    driver: bridge
+

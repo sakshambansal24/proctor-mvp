@@ -1,0 +1,53 @@
+version: '3.7'
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:7.0
+    container_name: proctor-mvp-mongo-prod
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: proctor-mvp
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongo_data_prod:/data/db
+    networks:
+      - proctor-network-prod
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Server (Production)
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: proctor-mvp-server-prod
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD}@mongo:27017/proctor-mvp?authSource=admin
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:4200}
+      - CLIENT_BUILD_PATH=/app/client
+    depends_on:
+      - mongo
+    networks:
+      - proctor-network-prod
+
+volumes:
+  mongo_data_prod:
+    driver: local
+
+networks:
+  proctor-network-prod:
+    driver: bridge
+

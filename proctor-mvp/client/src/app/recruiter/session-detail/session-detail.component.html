@@ -1,0 +1,204 @@
+<div class="session-detail-container">
+  <div class="header">
+    <button class="btn-back" (click)="navigateBack()">← Back to Report</button>
+    <h2>Session Details</h2>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading session details...</div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error && sessionDetail" class="session-detail-content">
+    <!-- Session Summary -->
+    <div class="session-summary">
+      <div class="summary-header">
+        <div>
+          <h3>{{ sessionDetail.session.candidateName || 'Anonymous' }}</h3>
+          <span class="session-id">{{ sessionDetail.session.sessionId }}</span>
+        </div>
+        <span class="status-badge" [ngClass]="getStatusClass(sessionDetail.session.status)">
+          {{ sessionDetail.session.status }}
+        </span>
+      </div>
+
+      <div class="summary-metrics">
+        <div class="metric-card">
+          <div class="metric-label">Score</div>
+          <div class="metric-value">
+            {{ sessionDetail.session.scorePercent !== undefined ? sessionDetail.session.scorePercent : 0 }}%
+          </div>
+          <div class="metric-detail">
+            {{ sessionDetail.session.totalCorrect || sessionDetail.session.score }}/{{ sessionDetail.session.totalQuestions || sessionDetail.session.totalMarks }}
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Time Taken</div>
+          <div class="metric-value">{{ formatTime(sessionDetail.session.timeTaken) }}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Red Flags</div>
+          <div class="metric-value" [class.high-flags]="sessionDetail.session.redFlagCount >= 5">
+            {{ sessionDetail.session.redFlagCount }}
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Started</div>
+          <div class="metric-value">{{ sessionDetail.session.startedAt | date:'short' }}</div>
+        </div>
+        <div class="metric-card" *ngIf="sessionDetail.session.endedAt">
+          <div class="metric-label">Ended</div>
+          <div class="metric-value">{{ sessionDetail.session.endedAt | date:'short' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two Column Layout: Answers and Timeline -->
+    <div class="main-content-grid">
+      <!-- Answer Breakdown -->
+      <div class="answers-section">
+        <h3>Answer Breakdown ({{ sessionDetail.answers.length }})</h3>
+        <div *ngIf="sessionDetail.answers.length === 0" class="empty-state">
+          <p>No answers submitted.</p>
+        </div>
+        <div *ngIf="sessionDetail.answers.length > 0" class="answers-list">
+          <div *ngFor="let answer of sessionDetail.answers; let i = index" class="answer-card" [class.correct]="isCorrectAnswer(answer)" [class.incorrect]="!isCorrectAnswer(answer)">
+            <div class="answer-header">
+              <span class="question-number">Question {{ i + 1 }}</span>
+              <span class="answer-status" [class.correct]="isCorrectAnswer(answer)" [class.incorrect]="!isCorrectAnswer(answer)">
+                {{ isCorrectAnswer(answer) ? '✓ Correct' : '✗ Incorrect' }}
+              </span>
+            </div>
+            
+            <div class="question-text">
+              <strong>Question:</strong> {{ answer.questionId?.text }}
+            </div>
+            
+            <div class="answer-comparison">
+              <div class="answer-row">
+                <span class="answer-label">Candidate Answer:</span>
+                <span class="answer-value candidate" [class.wrong]="!isCorrectAnswer(answer)">
+                  {{ getSelectedOptionLabel(answer) }}
+                </span>
+              </div>
+              <div class="answer-row">
+                <span class="answer-label">Correct Answer:</span>
+                <span class="answer-value correct">
+                  {{ getCorrectOptionLabel(answer) }}
+                </span>
+              </div>
+              <div class="answer-row">
+                <span class="answer-label">Result:</span>
+                <span class="answer-value" [class.correct-result]="isCorrectAnswer(answer)" [class.incorrect-result]="!isCorrectAnswer(answer)">
+                  {{ isCorrectAnswer(answer) ? 'Correct' : 'Incorrect' }}
+                </span>
+              </div>
+            </div>
+            
+            <div *ngIf="answer.timeAnswered" class="answer-time">
+              <span class="time-icon">🕐</span>
+              Answered at: {{ answer.timeAnswered | date:'medium' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Timeline -->
+      <div class="timeline-section">
+        <h3>Activity Timeline</h3>
+        <div *ngIf="!sessionDetail.session.redFlagTimeline || sessionDetail.session.redFlagTimeline.length === 0" class="empty-state">
+          <p>No activity recorded.</p>
+        </div>
+        <div *ngIf="sessionDetail.session.redFlagTimeline && sessionDetail.session.redFlagTimeline.length > 0" class="timeline">
+          <div *ngFor="let flag of sessionDetail.session.redFlagTimeline" class="timeline-item">
+            <div class="timeline-icon">{{ getRedFlagIcon(flag.type) }}</div>
+            <div class="timeline-content">
+              <div class="timeline-header">
+                <span class="flag-type">{{ formatRedFlagType(flag.type) }}</span>
+                <span class="flag-time">{{ flag.timestamp | date:'medium' }}</span>
+              </div>
+              <div *ngIf="flag.details" class="flag-details">{{ flag.details }}</div>
+              <div *ngIf="getSnapshotForFlag(flag)" class="flag-snapshot">
+                <button class="snapshot-link-btn" (click)="viewSnapshot(getSnapshotForFlag(flag)!)">
+                  📷 View Snapshot
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snapshots Section -->
+    <div class="snapshots-section">
+      <div class="snapshots-header">
+        <h3>Proctoring Snapshots</h3>
+        <button class="btn-toggle" (click)="toggleSnapshots()">
+          {{ showSnapshots ? 'Hide' : 'Show' }} Snapshots
+          <span *ngIf="snapshots.length > 0" class="snapshot-count">({{ snapshots.length }})</span>
+        </button>
+      </div>
+
+      <div *ngIf="loadingSnapshots" class="loading">Loading snapshots...</div>
+
+      <div *ngIf="showSnapshots && !loadingSnapshots">
+        <div *ngIf="snapshots.length === 0" class="empty-state">
+          <p>No snapshots available for this session.</p>
+        </div>
+
+        <div *ngIf="snapshots.length > 0" class="snapshots-grid">
+          <div *ngFor="let snapshot of snapshots" class="snapshot-card" (click)="viewSnapshot(snapshot)">
+            <div class="snapshot-thumbnail">
+              <img [src]="getSnapshotDataUrl(snapshot)" [alt]="snapshot.eventType || 'Snapshot'" />
+              <div class="snapshot-overlay">
+                <span class="snapshot-priority" [class.priority-high]="snapshot.priority === 'high'" [class.priority-normal]="snapshot.priority === 'normal'" [class.priority-low]="snapshot.priority === 'low'">
+                  {{ snapshot.priority }}
+                </span>
+              </div>
+            </div>
+            <div class="snapshot-info">
+              <div class="snapshot-event" *ngIf="snapshot.eventType">
+                {{ formatRedFlagType(snapshot.eventType) }}
+              </div>
+              <div class="snapshot-time">{{ snapshot.timestamp | date:'short' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Snapshot Modal -->
+<div *ngIf="showSnapshotModal && selectedSnapshot" class="modal-overlay" (click)="closeSnapshotModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Snapshot Details</h3>
+      <button class="btn-close" (click)="closeSnapshotModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="snapshot-full">
+        <img [src]="getSnapshotDataUrl(selectedSnapshot)" [alt]="selectedSnapshot.eventType || 'Snapshot'" />
+      </div>
+      <div class="snapshot-metadata">
+        <div class="metadata-row">
+          <span class="metadata-label">Event Type:</span>
+          <span class="metadata-value">{{ selectedSnapshot.eventType ? formatRedFlagType(selectedSnapshot.eventType) : 'N/A' }}</span>
+        </div>
+        <div class="metadata-row">
+          <span class="metadata-label">Priority:</span>
+          <span class="metadata-value" [class.priority-high]="selectedSnapshot.priority === 'high'" [class.priority-normal]="selectedSnapshot.priority === 'normal'" [class.priority-low]="selectedSnapshot.priority === 'low'">
+            {{ selectedSnapshot.priority }}
+          </span>
+        </div>
+        <div class="metadata-row">
+          <span class="metadata-label">Timestamp:</span>
+          <span class="metadata-value">{{ selectedSnapshot.timestamp | date:'medium' }}</span>
+        </div>
+        <div class="metadata-row">
+          <span class="metadata-label">Size:</span>
+          <span class="metadata-value">{{ (selectedSnapshot.imageSize / 1024).toFixed(2) }} KB</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

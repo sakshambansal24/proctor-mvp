@@ -1,0 +1,49 @@
+<div class="candidate-landing">
+  <div class="landing-container">
+    <div class="landing-card">
+      <div class="landing-header">
+        <h1>Welcome to Proctor MVP</h1>
+        <p>Enter your test link to begin</p>
+      </div>
+
+      <form [formGroup]="landingForm" (ngSubmit)="onSubmit()" class="landing-form">
+        <div *ngIf="error" class="error-message">
+          {{ error }}
+        </div>
+
+        <div class="form-group">
+          <label for="testLink">Test Link *</label>
+          <input
+            type="text"
+            id="testLink"
+            formControlName="testLink"
+            class="form-control"
+            placeholder="Enter test link or test link ID"
+            [class.invalid]="landingForm.get('testLink')?.invalid && landingForm.get('testLink')?.touched">
+          <div *ngIf="landingForm.get('testLink')?.invalid && landingForm.get('testLink')?.touched" class="error-text">
+            Test link is required
+          </div>
+          <small class="help-text">You can enter the full URL or just the test link ID</small>
+        </div>
+
+        <div class="form-group">
+          <label for="candidateName">Your Name (Optional)</label>
+          <input
+            type="text"
+            id="candidateName"
+            formControlName="candidateName"
+            class="form-control"
+            placeholder="Enter your name">
+          <small class="help-text">This helps identify you in the test results</small>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" [disabled]="landingForm.invalid || loading">
+            {{ loading ? 'Loading...' : 'Start Test' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+

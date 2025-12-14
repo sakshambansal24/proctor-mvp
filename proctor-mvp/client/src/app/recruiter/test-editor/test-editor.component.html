@@ -1,0 +1,221 @@
+<div class="test-editor-container">
+  <div class="header">
+    <h2>{{ testId ? 'Edit Test' : 'Create New Test' }}</h2>
+    <div class="header-actions">
+      <button class="btn-secondary" (click)="cancel()">Cancel</button>
+      <button class="btn-secondary" (click)="saveDraft()" [disabled]="saving">
+        {{ saving ? 'Saving...' : 'Save Draft' }}
+      </button>
+      <button 
+        *ngIf="testId && testPublished" 
+        class="btn-secondary" 
+        (click)="unpublishTest()"
+        [disabled]="saving">
+        {{ saving ? 'Unpublishing...' : 'Unpublish Test' }}
+      </button>
+      <button 
+        *ngIf="testId" 
+        class="btn-primary" 
+        (click)="publishTest()"
+        [disabled]="testForm.invalid || saving">
+        {{ saving ? 'Publishing...' : (testPublished ? 'Republish Test' : 'Publish Test') }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="error">{{ error }}</div>
+  <div *ngIf="loading" class="loading">Loading test...</div>
+
+  <form [formGroup]="testForm" *ngIf="!loading">
+    <!-- Basic Test Info -->
+    <div class="form-section">
+      <h3>Test Information</h3>
+      
+      <div class="form-group">
+        <label for="title">Title *</label>
+        <input 
+          type="text" 
+          id="title" 
+          formControlName="title"
+          class="form-control"
+          [class.invalid]="testForm.get('title')?.invalid && testForm.get('title')?.touched">
+        <div *ngIf="testForm.get('title')?.invalid && testForm.get('title')?.touched" class="error-text">
+          Title is required (3-200 characters)
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="description">Description *</label>
+        <textarea 
+          id="description" 
+          formControlName="description"
+          rows="4"
+          class="form-control"
+          [class.invalid]="testForm.get('description')?.invalid && testForm.get('description')?.touched"></textarea>
+        <div *ngIf="testForm.get('description')?.invalid && testForm.get('description')?.touched" class="error-text">
+          Description is required (max 1000 characters)
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="durationMinutes">Duration (minutes) *</label>
+          <input 
+            type="number" 
+            id="durationMinutes" 
+            formControlName="durationMinutes"
+            min="1"
+            max="1440"
+            class="form-control"
+            [class.invalid]="testForm.get('durationMinutes')?.invalid && testForm.get('durationMinutes')?.touched">
+          <div *ngIf="testForm.get('durationMinutes')?.invalid && testForm.get('durationMinutes')?.touched" class="error-text">
+            Duration must be between 1 and 1440 minutes
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="startTime">Start Time (optional)</label>
+          <input 
+            type="datetime-local" 
+            id="startTime" 
+            formControlName="startTime"
+            class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label for="endTime">End Time (optional)</label>
+          <input 
+            type="datetime-local" 
+            id="endTime" 
+            formControlName="endTime"
+            class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <!-- Questions Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <h3>Questions (Minimum 5 required) *</h3>
+        <button type="button" class="btn-secondary" (click)="addQuestion()">+ Add Question</button>
+      </div>
+
+      <div *ngIf="testForm.get('questions')?.hasError('minQuestions')" class="error-text">
+        At least 5 questions are required (currently: {{ questions.length }})
+      </div>
+
+      <div formArrayName="questions" class="questions-list">
+        <div *ngFor="let question of questions.controls; let i = index" [formGroupName]="i" class="question-card">
+          <div class="question-header">
+            <h4>Question {{ i + 1 }}</h4>
+            <button 
+              type="button" 
+              class="btn-danger btn-small" 
+              (click)="removeQuestion(i)"
+              [disabled]="questions.length <= 5">
+              Remove
+            </button>
+          </div>
+
+          <div class="form-group">
+            <label>Question Text *</label>
+            <textarea 
+              formControlName="text"
+              rows="3"
+              class="form-control"
+              [class.invalid]="question.get('text')?.invalid && question.get('text')?.touched"
+              placeholder="Enter your question here..."></textarea>
+            <div *ngIf="question.get('text')?.invalid && question.get('text')?.touched" class="error-text">
+              Question text is required (min 10 characters)
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Options *</label>
+            <div formArrayName="options" class="options-list">
+              <div *ngFor="let option of getQuestionOptions(i).controls; let j = index" [formGroupName]="j" class="option-row">
+                <input 
+                  type="text" 
+                  formControlName="key"
+                  class="option-key"
+                  readonly>
+                <input 
+                  type="text" 
+                  formControlName="label"
+                  class="form-control option-label"
+                  [class.invalid]="option.get('label')?.invalid && option.get('label')?.touched"
+                  placeholder="Option text">
+                <button 
+                  type="button" 
+                  class="btn-danger btn-small"
+                  (click)="removeOption(i, j)"
+                  [disabled]="getQuestionOptions(i).length <= 2">
+                  ×
+                </button>
+              </div>
+            </div>
+            <button 
+              type="button" 
+              class="btn-secondary btn-small"
+              (click)="addOption(i)"
+              [disabled]="getQuestionOptions(i).length >= 6">
+              + Add Option
+            </button>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Correct Answer *</label>
+              <select 
+                formControlName="correctOption"
+                class="form-control"
+                [class.invalid]="question.get('correctOption')?.invalid && question.get('correctOption')?.touched">
+                <option value="">Select correct option</option>
+                <option *ngFor="let option of getQuestionOptions(i).controls" [value]="option.get('key')?.value">
+                  {{ option.get('key')?.value }} - {{ option.get('label')?.value || 'Empty' }}
+                </option>
+              </select>
+              <div *ngIf="question.get('correctOption')?.invalid && question.get('correctOption')?.touched" class="error-text">
+                Please select the correct answer
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Marks *</label>
+              <input 
+                type="number" 
+                formControlName="marks"
+                min="1"
+                class="form-control marks-input"
+                [class.invalid]="question.get('marks')?.invalid && question.get('marks')?.touched">
+              <div *ngIf="question.get('marks')?.invalid && question.get('marks')?.touched" class="error-text">
+                Marks must be at least 1
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- Notification -->
+  <div *ngIf="showNotification" class="notification" [class.notification-success]="notificationType === 'success'" [class.notification-error]="notificationType === 'error'">
+    <div class="notification-content">
+      <span class="notification-icon">{{ notificationType === 'success' ? '✓' : '✗' }}</span>
+      <div class="notification-message">
+        <p>{{ notificationMessage }}</p>
+        <div *ngIf="notificationType === 'success' && publishedTestLink" class="notification-actions">
+          <input 
+            type="text" 
+            [value]="publishedTestLink" 
+            readonly 
+            class="link-input"
+            id="testLinkInput">
+          <button class="btn-primary btn-small" (click)="copyTestLink()">Copy Link</button>
+        </div>
+      </div>
+      <button class="notification-close" (click)="closeNotification()">×</button>
+    </div>
+  </div>
+</div>
+

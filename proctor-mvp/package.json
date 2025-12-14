@@ -1,0 +1,32 @@
+{
+  "name": "proctor-mvp",
+  "version": "1.0.0",
+  "description": "Online Proctored Test Platform - MVP",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm start --prefix client\"",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm start --prefix client",
+    "build": "npm run build --prefix client && npm run build --prefix server",
+    "build:server": "npm run build --prefix server",
+    "build:client": "npm run build --prefix client",
+    "start": "npm start --prefix server",
+    "test": "npm test --prefix server && npm test --prefix client"
+  },
+  "keywords": [
+    "proctoring",
+    "online-test",
+    "assessment"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+

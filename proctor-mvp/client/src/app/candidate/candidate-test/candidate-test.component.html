@@ -1,0 +1,272 @@
+<div class="candidate-test">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="loading">Loading test...</div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-container">
+    <div class="error-card">
+      <h2>Error</h2>
+      <p>{{ error }}</p>
+      <button class="btn-primary" (click)="goBack()">Go Back</button>
+    </div>
+  </div>
+
+  <!-- Test Preview (Before Starting) -->
+  <div *ngIf="test && !testStarted && !loading && !error" class="test-preview">
+    <div class="preview-card">
+      <h1>{{ test.title }}</h1>
+      <p class="description">{{ test.description }}</p>
+      
+      <div class="test-info">
+        <div class="info-item">
+          <strong>Duration:</strong> {{ test.durationMinutes }} minutes
+        </div>
+        <div class="info-item">
+          <strong>Questions:</strong> {{ test.questions?.length || 0 }}
+        </div>
+        <div class="info-item" *ngIf="candidateName">
+          <strong>Candidate:</strong> {{ candidateName }}
+        </div>
+      </div>
+
+      <!-- Permission Status -->
+      <div class="permission-status" *ngIf="permissionsRequested">
+        <div class="permission-item">
+          <span class="permission-icon">{{ cameraActive ? '✅' : '❌' }}</span>
+          <span>Camera: {{ cameraActive ? 'Granted' : 'Denied' }}</span>
+        </div>
+        <div class="permission-item">
+          <span class="permission-icon">{{ screenSharingActive ? '✅' : '❌' }}</span>
+          <span>Screen Sharing: {{ screenSharingActive ? 'Granted' : 'Denied' }}</span>
+        </div>
+      </div>
+
+      <div class="preview-actions">
+        <button 
+          class="btn-primary" 
+          (click)="startTest()" 
+          [disabled]="starting || requestingPermissions || (!permissionsRequested && !requestingPermissions) || (permissionsRequested && !screenSharingActive && !screenSharingDenied)">
+          {{ starting ? 'Starting...' : requestingPermissions ? 'Requesting Permissions...' : permissionsRequested && !screenSharingActive && !screenSharingDenied ? 'Screen Sharing Required' : permissionsRequested ? 'Start Test' : 'Request Permissions First' }}
+        </button>
+        <button 
+          *ngIf="!permissionsRequested" 
+          class="btn-secondary" 
+          (click)="requestMediaPermissions()" 
+          [disabled]="requestingPermissions">
+          {{ requestingPermissions ? 'Requesting...' : 'Request Camera & Screen Access' }}
+        </button>
+        <button 
+          *ngIf="screenSharingDenied && permissionsRequested" 
+          class="btn-secondary" 
+          (click)="reRequestScreenPermission()" 
+          [disabled]="requestingPermissions">
+          {{ requestingPermissions ? 'Requesting...' : 'Re-enable Screen Sharing' }}
+        </button>
+      </div>
+
+      <div class="preview-note">
+        <p><strong>Note:</strong> Camera and screen sharing permissions are required for proctoring. Please grant access before starting the test.</p>
+        <p *ngIf="cameraDenied" class="warning-text">⚠️ Camera access was denied. The test will continue, but your session will be flagged.</p>
+        <p *ngIf="screenSharingDenied" class="warning-text">⚠️ Screen sharing was denied. This will be flagged in your test report.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Taking Interface -->
+  <div *ngIf="test && testStarted && !testSubmitted" class="test-interface">
+    <div class="test-header">
+      <div class="test-title">
+        <h2>{{ test.title }}</h2>
+        <div class="timer" 
+             [class.warning]="timeRemaining < 300" 
+             [class.critical]="timeRemaining <= 60">
+          <span class="timer-icon">⏱️</span>
+          <span class="timer-text">{{ formatTime(timeRemaining) }}</span>
+        </div>
+      </div>
+      
+      <!-- Proctoring Status -->
+      <div class="proctoring-status">
+        <div class="camera-status" [class.active]="cameraActive" [class.denied]="cameraDenied">
+          <span *ngIf="cameraActive">📹 Camera Active</span>
+          <span *ngIf="cameraDenied">⚠️ Camera Denied</span>
+          <span *ngIf="!cameraActive && !cameraDenied">📹 Initializing...</span>
+          <button *ngIf="cameraDenied && testStarted" class="btn-reconnect" (click)="reRequestCameraPermission()" [disabled]="requestingPermissions">
+            Re-enable Camera
+          </button>
+        </div>
+        <div class="screen-status" [class.active]="screenSharingActive" [class.denied]="screenSharingDenied" *ngIf="permissionsRequested">
+          <span *ngIf="screenSharingActive">🖥️ Screen Sharing Active</span>
+          <span *ngIf="screenSharingDenied">⚠️ Screen Sharing Denied</span>
+          <button *ngIf="screenSharingDenied && testStarted" class="btn-reconnect" (click)="reRequestScreenPermission()" [disabled]="requestingPermissions">
+            Re-enable Screen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- One Minute Warning Banner -->
+    <div *ngIf="showOneMinuteWarning" class="one-minute-warning-banner">
+      <div class="warning-content">
+        <strong>⚠️ TIME WARNING:</strong> Only 1 minute remaining! Your test will be automatically submitted when time runs out.
+      </div>
+      <button class="btn-dismiss" (click)="showOneMinuteWarning = false">×</button>
+    </div>
+
+    <!-- Active Warnings -->
+    <div *ngIf="activeWarnings.length > 0" class="warnings-container">
+      <div *ngFor="let warning of activeWarnings" class="warning-banner" [class.critical]="warning.count >= 2">
+        <div class="warning-content">
+          <strong>⚠️ {{ warning.count > 1 ? 'REPEATED ' : '' }}WARNING:</strong> {{ warning.message }}
+        </div>
+        <button class="btn-dismiss" (click)="dismissWarning(warning.type)">×</button>
+      </div>
+    </div>
+
+    <!-- Critical Warning Modal -->
+    <div *ngIf="showWarningModal" class="warning-modal-overlay" (click)="closeWarningModal()">
+      <div class="warning-modal" (click)="$event.stopPropagation()">
+        <div class="warning-modal-header">
+          <h3>⚠️ CRITICAL WARNING</h3>
+        </div>
+        <div class="warning-modal-body">
+          <p>{{ warningMessage }}</p>
+          <p><strong>Red Flag Count: {{ redFlagCount }}</strong></p>
+          <p class="warning-note">If you reach 5 red flags, your test will be automatically terminated.</p>
+        </div>
+        <div class="warning-modal-footer">
+          <button class="btn-primary" (click)="closeWarningModal()">I Understand</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit Confirmation Modal -->
+    <div *ngIf="showSubmitConfirmationModal" class="confirmation-modal-overlay" (click)="cancelSubmitTest()">
+      <div class="confirmation-modal" (click)="$event.stopPropagation()">
+        <div class="confirmation-modal-header">
+          <h3>⚠️ Confirm Test Submission</h3>
+        </div>
+        <div class="confirmation-modal-body">
+          <p>Are you sure you want to submit the test?</p>
+          <p class="confirmation-warning">You cannot change your answers after submission.</p>
+        </div>
+        <div class="confirmation-modal-footer">
+          <button class="btn-secondary" (click)="cancelSubmitTest()">Cancel</button>
+          <button class="btn-primary" (click)="confirmSubmitTest()">Yes, Submit Test</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Warning Modal -->
+    <div *ngIf="showNavigationWarningModal" class="confirmation-modal-overlay" (click)="cancelNavigationAway()">
+      <div class="confirmation-modal" (click)="$event.stopPropagation()">
+        <div class="confirmation-modal-header">
+          <h3>⚠️ Navigation Warning</h3>
+        </div>
+        <div class="confirmation-modal-body">
+          <p>{{ navigationWarningMessage }}</p>
+          <p class="confirmation-warning">This will be logged as a violation.</p>
+        </div>
+        <div class="confirmation-modal-footer">
+          <button class="btn-secondary" (click)="cancelNavigationAway()">Stay on Page</button>
+          <button class="btn-danger" (click)="confirmNavigationAway()">Leave Anyway</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera Denied Warning -->
+    <div *ngIf="cameraDenied && !cameraActive" class="camera-warning">
+      <strong>⚠️ Warning:</strong> Camera access was denied. Your session is being monitored, but camera recording is not available. This will be flagged in your test report.
+      <button *ngIf="testStarted" class="btn-reconnect-inline" (click)="reRequestCameraPermission()" [disabled]="requestingPermissions">
+        Re-enable Camera
+      </button>
+    </div>
+
+    <div class="test-body">
+      <div class="question-panel">
+        <div class="question-header">
+          <span class="question-number">Question {{ currentQuestionIndex + 1 }} of {{ test.questions.length }}</span>
+        </div>
+
+        <div class="question-content" *ngIf="currentQuestion">
+          <h3>{{ currentQuestion.text }}</h3>
+          <div class="options">
+            <label 
+              *ngFor="let option of currentQuestion.options" 
+              class="option-label"
+              [class.selected]="getAnswer(currentQuestion._id) === option.key">
+              <input
+                type="radio"
+                [name]="'question-' + currentQuestion._id"
+                [value]="option.key"
+                [checked]="getAnswer(currentQuestion._id) === option.key"
+                (change)="selectAnswer(option.key)">
+              <span class="option-key">{{ option.key }}.</span>
+              <span class="option-text">{{ option.label }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="question-navigation">
+          <button class="btn-secondary" (click)="previousQuestion()" [disabled]="currentQuestionIndex === 0">
+            ← Previous
+          </button>
+          <button class="btn-secondary" (click)="nextQuestion()" [disabled]="currentQuestionIndex === test.questions.length - 1">
+            Next →
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <!-- Proctoring Video Preview (Hidden but active) -->
+        <div class="proctor-video-container">
+          <video 
+            #proctorVideo
+            autoplay
+            playsinline
+            muted
+            class="proctor-video"
+            style="display: none;">
+          </video>
+        </div>
+
+        <div class="question-list">
+          <h4>Questions</h4>
+          <div class="question-grid">
+            <button
+              *ngFor="let question of test.questions; let i = index"
+              class="question-btn"
+              [class.answered]="getAnswer(question._id)"
+              [class.current]="i === currentQuestionIndex"
+              (click)="goToQuestion(i)">
+              {{ i + 1 }}
+            </button>
+          </div>
+        </div>
+
+        <div class="test-actions">
+          <button class="btn-danger" (click)="submitTest()">
+            Submit Test
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Submitted State -->
+  <div *ngIf="testSubmitted" class="submitted-container">
+    <div class="submitted-card" [class.terminated]="error && error.includes('TERMINATED')">
+      <h2 *ngIf="!error || !error.includes('TERMINATED')">Test Submitted</h2>
+      <h2 *ngIf="error && error.includes('TERMINATED')" style="color: #dc3545;">⚠️ Test Terminated</h2>
+      <p *ngIf="!error || !error.includes('TERMINATED')">Your test has been submitted successfully. Redirecting to results...</p>
+      <p *ngIf="error && error.includes('TERMINATED')" style="color: #721c24; font-weight: 500;">{{ error }}</p>
+      <p *ngIf="error && error.includes('TERMINATED')" style="margin-top: 1rem; color: #856404;">
+        Your test session has been automatically terminated due to multiple violations of test rules (5+ red flags). 
+        All your answers have been saved, but your test will be marked as failed due to proctoring violations.
+      </p>
+    </div>
+  </div>
+</div>
+

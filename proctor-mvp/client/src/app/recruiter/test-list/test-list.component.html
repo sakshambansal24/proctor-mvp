@@ -1,0 +1,37 @@
+<div class="test-list-container">
+  <div class="header">
+    <h2>My Tests</h2>
+    <button class="btn-primary" (click)="createNewTest()">+ Create New Test</button>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading tests...</div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error" class="tests-grid">
+    <div *ngIf="tests.length === 0" class="empty-state">
+      <p>No tests created yet.</p>
+      <button class="btn-primary" (click)="createNewTest()">Create Your First Test</button>
+    </div>
+
+    <div *ngFor="let test of tests" class="test-card">
+      <div class="test-header">
+        <h3>{{ test.title }}</h3>
+        <span class="badge" [class.published]="test.published" [class.draft]="!test.published">
+          {{ test.published ? 'Published' : 'Draft' }}
+        </span>
+      </div>
+      <p class="description">{{ test.description }}</p>
+      <div class="test-meta">
+        <span>Duration: {{ test.durationMinutes }} min</span>
+        <span>Questions: {{ test.questions?.length || 0 }}</span>
+        <span *ngIf="test.testLinkId" class="test-link-id">Link ID: {{ test.testLinkId }}</span>
+      </div>
+      <div class="test-actions">
+        <button *ngIf="test.published" class="btn-link" (click)="viewTestLink(test)">📋 Copy Link</button>
+        <button class="btn-secondary" (click)="editTest(test._id!)">Edit</button>
+        <button class="btn-secondary" (click)="viewReport(test._id!)">View Report</button>
+        <button class="btn-danger" (click)="deleteTest(test._id!)">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
