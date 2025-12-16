@@ -9,7 +9,17 @@ const fs = require('fs');
 const path = require('path');
 
 // Get API URL from environment variable (set in Netlify)
-const apiUrl = process.env.NETLIFY_API_URL || process.env.API_URL || '/api';
+let apiUrl = process.env.NETLIFY_API_URL || process.env.API_URL || '/api';
+
+// If it's a full URL (starts with http), ensure it ends with /api
+if (apiUrl.startsWith('http')) {
+  // Remove trailing slash if present
+  apiUrl = apiUrl.replace(/\/$/, '');
+  // Append /api if not already present
+  if (!apiUrl.endsWith('/api')) {
+    apiUrl = `${apiUrl}/api`;
+  }
+}
 
 // Path to environment.prod.ts
 const envPath = path.join(__dirname, '../src/environments/environment.prod.ts');

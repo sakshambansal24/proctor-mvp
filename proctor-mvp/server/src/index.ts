@@ -7,6 +7,7 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { connectDatabase } from './config/database';
 
 // Connect to MongoDB
@@ -94,15 +95,34 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve static files from Angular app in production
+// Serve static files from Angular app in production (if client build exists)
 if (NODE_ENV === 'production') {
   const clientPath = process.env.CLIENT_BUILD_PATH || path.join(__dirname, '../../client/dist/proctor-mvp');
-  app.use(express.static(clientPath));
+  
+  // Check if client build directory exists before trying to serve it
+  const fs = require('fs');
+  if (fs.existsSync(clientPath)) {
+    app.use(express.static(clientPath));
 
-  // Handle Angular routing - return index.html for all routes
-  app.get('*', (_req: Request, res: Response) => {
-    res.sendFile(path.join(clientPath, 'index.html'));
-  });
+    // Handle Angular routing - return index.html for all routes
+    app.get('*', (_req: Request, res: Response) => {
+      res.sendFile(path.join(clientPath, 'index.html'));
+    });
+  } else {
+    // Client is deployed separately (e.g., on Netlify)
+    // Only serve API routes, return 404 for non-API routes
+    app.get('*', (req: Request, res: Response) => {
+      // If it's an API route, it should have been handled above
+      // Otherwise, return a helpful message
+      if (!req.path.startsWith('/api')) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: 'Frontend is deployed separately. Please use the frontend URL to access the application.',
+          apiUrl: `${req.protocol}://${req.get('host')}/api`
+        });
+      }
+    });
+  }
 }
 
 // Error handling middleware
