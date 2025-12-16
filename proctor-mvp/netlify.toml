@@ -1,0 +1,43 @@
+# Netlify configuration for Proctor MVP
+
+[build]
+  # Build command - builds the Angular app with environment variable support
+  command = "cd client && npm install && npm run build:prod"
+  # Directory containing the built files
+  publish = "client/dist/proctor-mvp"
+
+# Redirect rules for Angular routing (SPA)
+# All routes should serve index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Environment variables
+# Set these in Netlify dashboard: Site settings > Environment variables
+# VITE_API_URL or REACT_APP_API_URL won't work for Angular
+# We'll use a build-time replacement or runtime config

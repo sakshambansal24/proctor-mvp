@@ -1,0 +1,26 @@
+# Render Blueprint - Infrastructure as Code
+# This file allows you to define your services declaratively
+# Deploy via: https://dashboard.render.com/blueprints
+
+services:
+  - type: web
+    name: proctor-mvp-server
+    env: node
+    region: oregon  # Options: oregon, frankfurt, singapore, mumbai, tokyo
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    rootDir: server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: MONGODB_URI
+        sync: false  # Set this manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false  # Set this manually in Render dashboard (generate a secure secret)
+      - key: CORS_ORIGIN
+        sync: false  # Set this after deploying frontend
+      - key: CLIENT_BUILD_PATH
+        value: ../client/dist/proctor-mvp
