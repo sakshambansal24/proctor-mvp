@@ -7,7 +7,6 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
-import fs from 'fs';
 import { connectDatabase } from './config/database';
 
 // Connect to MongoDB
