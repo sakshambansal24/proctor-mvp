@@ -417,8 +417,27 @@ export const updateTest = async (req: AuthRequest, res: Response): Promise<void>
     if (updates.title) test.title = updates.title;
     if (updates.description) test.description = updates.description;
     if (updates.durationMinutes) test.durationMinutes = updates.durationMinutes;
-    if (updates.startTime) test.startTime = new Date(updates.startTime);
-    if (updates.endTime) test.endTime = new Date(updates.endTime);
+    
+    // Handle startTime - allow clearing (null/undefined/empty string)
+    if (updates.hasOwnProperty('startTime')) {
+      if (updates.startTime && updates.startTime !== '') {
+        test.startTime = new Date(updates.startTime);
+      } else {
+        // Clear startTime if null, undefined, or empty string
+        test.startTime = undefined;
+      }
+    }
+    
+    // Handle endTime - allow clearing (null/undefined/empty string)
+    if (updates.hasOwnProperty('endTime')) {
+      if (updates.endTime && updates.endTime !== '') {
+        test.endTime = new Date(updates.endTime);
+      } else {
+        // Clear endTime if null, undefined, or empty string
+        test.endTime = undefined;
+      }
+    }
+    
     if (updates.penaltyThreshold !== undefined) test.penaltyThreshold = updates.penaltyThreshold;
     if (updates.enableScreenMonitoring !== undefined) test.enableScreenMonitoring = updates.enableScreenMonitoring;
 
@@ -552,8 +571,10 @@ export const unpublishTest = async (req: AuthRequest, res: Response): Promise<vo
     }
 
     // Unpublish the test
+    // Skip validation when unpublishing - we're only changing published status
+    // Validation would fail if startTime/endTime are in the past
     test.published = false;
-    await test.save();
+    await test.save({ validateBeforeSave: false });
 
     res.json({
       success: true,

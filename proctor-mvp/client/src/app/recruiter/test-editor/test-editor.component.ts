@@ -69,12 +69,25 @@ export class TestEditorComponent implements OnInit {
       next: (response) => {
         const test = response.data;
         this.testPublished = test.published || false; // Track published status
+        // Convert UTC dates to local datetime-local format
+        const formatDateForInput = (dateString: string): string => {
+          if (!dateString) return '';
+          const date = new Date(dateString);
+          // Get local date components
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          return `${year}-${month}-${day}T${hours}:${minutes}`;
+        };
+
         this.testForm.patchValue({
           title: test.title,
           description: test.description,
           durationMinutes: test.durationMinutes,
-          startTime: test.startTime ? new Date(test.startTime).toISOString().slice(0, 16) : '',
-          endTime: test.endTime ? new Date(test.endTime).toISOString().slice(0, 16) : ''
+          startTime: test.startTime ? formatDateForInput(test.startTime) : '',
+          endTime: test.endTime ? formatDateForInput(test.endTime) : ''
         });
 
         // Load questions if they exist
@@ -181,12 +194,25 @@ export class TestEditorComponent implements OnInit {
     this.error = null;
 
     const formValue = this.testForm.value;
+    
+    // Convert datetime-local strings to ISO strings (UTC)
+    // datetime-local gives us local time, we need to convert it to UTC for storage
+    const convertToISO = (dateTimeLocal: string): string | undefined => {
+      if (!dateTimeLocal) return undefined;
+      // datetime-local format: "YYYY-MM-DDTHH:mm"
+      // Create a date object treating it as local time, then convert to ISO (UTC)
+      const localDate = new Date(dateTimeLocal);
+      // Check if date is valid
+      if (isNaN(localDate.getTime())) return undefined;
+      return localDate.toISOString();
+    };
+
     const testData = {
       title: formValue.title,
       description: formValue.description,
       durationMinutes: formValue.durationMinutes,
-      startTime: formValue.startTime || undefined,
-      endTime: formValue.endTime || undefined
+      startTime: convertToISO(formValue.startTime),
+      endTime: convertToISO(formValue.endTime)
     };
 
     const saveObservable = this.testId

@@ -52,22 +52,40 @@ export const getTestByLink = async (req: AuthRequest, res: Response): Promise<vo
 
     // Check if test is still valid (if startTime/endTime are set)
     const now = new Date();
-    if (test.startTime && now < test.startTime) {
-      res.status(400).json({
-        success: false,
-        error: 'Bad Request',
-        message: 'Test has not started yet'
-      });
-      return;
+    // Compare timestamps to avoid timezone issues
+    if (test.startTime) {
+      const startTime = new Date(test.startTime).getTime();
+      const currentTime = now.getTime();
+      if (currentTime < startTime) {
+        res.status(400).json({
+          success: false,
+          error: 'Bad Request',
+          message: 'Test has not started yet',
+          details: {
+            startTime: test.startTime,
+            currentTime: now,
+            timeUntilStart: Math.round((startTime - currentTime) / 1000 / 60) // minutes until start
+          }
+        });
+        return;
+      }
     }
 
-    if (test.endTime && now > test.endTime) {
-      res.status(400).json({
-        success: false,
-        error: 'Bad Request',
-        message: 'Test has ended'
-      });
-      return;
+    if (test.endTime) {
+      const endTime = new Date(test.endTime).getTime();
+      const currentTime = now.getTime();
+      if (currentTime > endTime) {
+        res.status(400).json({
+          success: false,
+          error: 'Bad Request',
+          message: 'Test has ended',
+          details: {
+            endTime: test.endTime,
+            currentTime: now
+          }
+        });
+        return;
+      }
     }
 
     res.json({
@@ -129,22 +147,40 @@ export const startTest = async (req: AuthRequest, res: Response): Promise<void> 
 
     // Check if test is still valid
     const now = new Date();
-    if (test.startTime && now < test.startTime) {
-      res.status(400).json({
-        success: false,
-        error: 'Bad Request',
-        message: 'Test has not started yet'
-      });
-      return;
+    // Compare timestamps to avoid timezone issues
+    if (test.startTime) {
+      const startTime = new Date(test.startTime).getTime();
+      const currentTime = now.getTime();
+      if (currentTime < startTime) {
+        res.status(400).json({
+          success: false,
+          error: 'Bad Request',
+          message: 'Test has not started yet',
+          details: {
+            startTime: test.startTime,
+            currentTime: now,
+            timeUntilStart: Math.round((startTime - currentTime) / 1000 / 60) // minutes until start
+          }
+        });
+        return;
+      }
     }
 
-    if (test.endTime && now > test.endTime) {
-      res.status(400).json({
-        success: false,
-        error: 'Bad Request',
-        message: 'Test has ended'
-      });
-      return;
+    if (test.endTime) {
+      const endTime = new Date(test.endTime).getTime();
+      const currentTime = now.getTime();
+      if (currentTime > endTime) {
+        res.status(400).json({
+          success: false,
+          error: 'Bad Request',
+          message: 'Test has ended',
+          details: {
+            endTime: test.endTime,
+            currentTime: now
+          }
+        });
+        return;
+      }
     }
 
     // Check if this testLinkId has already been used (single-use link)
